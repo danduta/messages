@@ -10,28 +10,24 @@ int main(int argc, char** args)
         cout << "Usage:\t./server <PORT>" << endl;
         return -1;
     } else {
-        // cout << "Started server on port " << atoi(args[1]) << endl;
         DEBUG("Started server on port ");
         DEBUG(atoi(args[1]));
     }
 
     int port;
-    // fd_collection fds;
-    int tcp, udp;
-    int ret, fdmax;
+    fd_collection fds;
+    fd_set tmp;
+    int ret;
     vector<client> clients;
     map<string, vector<subscription>> subs;
     
-    udp = socket(PF_INET, SOCK_DGRAM, 0);
-    DIE(udp < 0, "socket");
-    tcp = socket(PF_INET, SOCK_STREAM, 0);
-    DIE(tcp < 0, "socket");
+    fds.udp_fd = socket(PF_INET, SOCK_DGRAM, 0);
+    DIE(fds.udp_fd < 0, "socket");
+    fds.tcp_fd = socket(PF_INET, SOCK_STREAM, 0);
+    DIE(fds.tcp_fd < 0, "socket");
 
-    fdmax = (udp < tcp ? tcp : udp);
+    fds.fdmax = (fds.udp_fd < fds.tcp_fd ? fds.tcp_fd : fds.udp_fd);
 
-    fd_set fds;
-    fd_set tmp;
-    
     struct sockaddr_in addr;
     port = atoi(args[1]);
     DIE(port < 0, "atoi");
@@ -41,60 +37,56 @@ int main(int argc, char** args)
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    ret = bind(udp, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+    ret = bind(fds.udp_fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
     DIE(ret < 0, "bind");
-    ret = bind(tcp, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
+    ret = bind(fds.tcp_fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_in));
     DIE(ret < 0, "bind");
-    ret = listen(tcp, MAX_CLIENTS);
+    ret = listen(fds.tcp_fd, MAX_CLIENTS);
     DIE(ret < 0, "listen");
 
-    FD_ZERO(&fds);
+    FD_ZERO(&fds.all_fds);
     FD_ZERO(&tmp);
-    FD_SET(tcp, &fds);
-    FD_SET(udp, &fds);
+    FD_SET(fds.tcp_fd, &fds.all_fds);
+    FD_SET(fds.udp_fd, &fds.all_fds);
 
-    // cout << "Waiting for messages..." << endl;
     DEBUG("Waiting for messages...")
 
     while (1) {
-        tmp = fds;
+        tmp = fds.all_fds;
         int newfd = -1;
 
-        ret = select(fdmax + 1, &tmp, NULL, NULL, NULL);
+        ret = select(fds.fdmax + 1, &tmp, NULL, NULL, NULL);
 		DIE(ret < 0, "select");
 
-        ret = handle_select(&fds, &tmp, &newfd, &fdmax, tcp, udp, &addr, clients, subs);
+        ret = handle_select(&tmp, &newfd, fds, &addr, clients, subs);
     }
 
     return 0;
 }
 
 int handle_select(
-    fd_set* set,
     fd_set* tmp,
     int* newfd,
-    int* fdmax,
-    int tcp_fd,
-    int udp_fd,
+    fd_collection &fds,
     struct sockaddr_in* addr,
     vector<client> &clients,
     map<string, vector<subscription>> &subs)
 {
-
     char buffer[MSG_SIZE];
     memset(buffer, 0, MSG_SIZE);
 
-    for (int i = 0; i <= *fdmax; i++) {
+    for (int i = 0; i <= fds.fdmax; i++) {
         if (FD_ISSET(i, tmp)) {
-            if (i == tcp_fd) {
+            if (i == fds.tcp_fd) {
                 socklen_t len = sizeof(struct sockaddr_in);
                 *newfd = accept(i, (struct sockaddr*)addr, &len);
                 DIE(*newfd < 0, "accept");
 
-                FD_SET(*newfd, set);
+                FD_SET(*newfd, &fds.all_fds);
+                FD_SET(*newfd, &fds.tcp_clients);
 
-                if (*newfd > *fdmax) {
-                    *fdmax = *newfd;
+                if (*newfd > fds.fdmax) {
+                    fds.fdmax = *newfd;
                 }
 
                 memset(buffer, 0, MSG_SIZE);
@@ -102,7 +94,7 @@ int handle_select(
                 int bytes;
                 bytes = recv(*newfd, buffer, MSG_SIZE, 0);
 
-                struct tcp_message* msg = (struct tcp_message*)buffer;
+                tcp_message* msg = (tcp_message*)buffer;
 
                 if (bytes != MSG_SIZE || msg->type != TCP_CONN) {
                     //TODO: create function that handles recv() calls
@@ -121,7 +113,7 @@ int handle_select(
                     inet_ntoa(addr->sin_addr) << endl;
 
                 clients.emplace_back(c);
-            } else if (i == udp_fd) {
+            } else if (i == fds.udp_fd) {
 
             } else {
                 //FIXME: fd could be activated for any type of client

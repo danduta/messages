@@ -27,6 +27,8 @@ struct fd_collection {
     fd_set all_fds;
     fd_set tcp_clients;
     fd_set udp_clients;
+
+    int fdmax;
 };
 
 #define DIE(assertion, call_description)	\
@@ -47,12 +49,9 @@ struct fd_collection {
     } while (0);                            \
 
 int handle_select(
-    fd_set* set,
     fd_set* tmp,
     int* newfd,
-    int* fdmax,
-    int tcp_fd,
-    int udp_fd,
+    fd_collection &fds,
     struct sockaddr_in* addr,
     vector<client> &clients,
     map<string, vector<subscription>> &subs);
