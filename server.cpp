@@ -16,11 +16,11 @@ int main(int argc, char** args)
     }
 
     int port;
+    // fd_collection fds;
     int tcp, udp;
     int ret, fdmax;
     vector<client> clients;
-    // map of topics and its associated clients
-    map <string, list<subscription>> subs;
+    map<string, vector<subscription>> subs;
     
     udp = socket(PF_INET, SOCK_DGRAM, 0);
     DIE(udp < 0, "socket");
@@ -33,7 +33,7 @@ int main(int argc, char** args)
     fd_set tmp;
     
     struct sockaddr_in addr;
-    port = htons(atoi(args[1]));
+    port = atoi(args[1]);
     DIE(port < 0, "atoi");
 
     memset(&addr, 0, sizeof(struct sockaddr_in));
@@ -63,7 +63,7 @@ int main(int argc, char** args)
         ret = select(fdmax + 1, &tmp, NULL, NULL, NULL);
 		DIE(ret < 0, "select");
 
-        ret = handle_select(&fds, &tmp, &newfd, &fdmax, tcp, udp, &addr, clients);
+        ret = handle_select(&fds, &tmp, &newfd, &fdmax, tcp, udp, &addr, clients, subs);
     }
 
     return 0;
@@ -77,8 +77,13 @@ int handle_select(
     int tcp_fd,
     int udp_fd,
     struct sockaddr_in* addr,
-    vector<client> &clients)
+    vector<client> &clients,
+    map<string, vector<subscription>> &subs)
 {
+
+    char buffer[MSG_SIZE];
+    memset(buffer, 0, MSG_SIZE);
+
     for (int i = 0; i <= *fdmax; i++) {
         if (FD_ISSET(i, tmp)) {
             if (i == tcp_fd) {
@@ -92,27 +97,82 @@ int handle_select(
                     *fdmax = *newfd;
                 }
 
-                char buffer[TCP_LEN];
+                memset(buffer, 0, MSG_SIZE);
+                
                 int bytes;
-
-                bytes = recv(*newfd, buffer, TCP_LEN, 0);
+                bytes = recv(*newfd, buffer, MSG_SIZE, 0);
 
                 struct tcp_message* msg = (struct tcp_message*)buffer;
 
-                if (bytes != sizeof(struct tcp_message) ||
-                    msg->type != TCP_CONN) {
+                if (bytes != MSG_SIZE || msg->type != TCP_CONN) {
+                    //TODO: create function that handles recv() calls
+                    //client can send a large number of messages
+                    //and they can get squished together
+                    DEBUG("Invalid message from TCP client");
                     continue;
                 }
 
                 struct client c;
 
                 c.fd = *newfd;
-                strncpy(c.id, msg->payload, CLIENT_ID_LEN);
+                strncpy(c.id, msg->cli_id, CLIENT_ID_LEN);
 
                 cout << "New client (" << c.id << ") from " <<
                     inet_ntoa(addr->sin_addr) << endl;
 
                 clients.emplace_back(c);
+            } else if (i == udp_fd) {
+
+            } else {
+                //FIXME: fd could be activated for any type of client
+                //get client in else if condition, more fd_sets
+                //TODO: struct containing all the fd_sets
+                memset(buffer, 0, MSG_SIZE);
+
+                int bytes;
+                bytes = recv(i, buffer, MSG_SIZE, 0);
+                DIE(bytes != MSG_SIZE, "recv");
+
+                struct tcp_message* msg = (struct tcp_message*)buffer;
+
+                vector<client>::iterator client;
+                client = find_if(clients.begin(), clients.end(),
+                    [msg] (const struct client &c) -> bool {
+                        return strcmp(c.id, msg->cli_id) == 0;});
+
+                if (client == clients.end() || clients.empty()) {
+                    continue;
+                }
+
+                if (msg->type == TCP_SUB) {
+                    DEBUG("Client..");
+                    DEBUG(msg->cli_id);
+                    DEBUG("..subscribed to topic..");
+                    DEBUG(msg->payload);
+                    auto it = subs.find(msg->payload);
+
+                    if (it != subs.end()) {
+                        subscription s;
+                        s.client = &(*client);
+                        s.sf = msg->sf;
+                        it->second.emplace_back(s);
+                    }
+                } else if (msg->type == TCP_UNSUB) {
+                    auto it = subs.find(msg->payload);
+
+                    if (it != subs.end()) {
+                        auto sub_to_remove = find_if(
+                            it->second.begin(),
+                            it->second.end(),
+                            [client](const subscription &s) -> bool {
+                                return s.client == &(*client);
+                            });
+
+                        if (sub_to_remove != it->second.end()) {
+                            it->second.erase(sub_to_remove);
+                        }
+                    }
+                }
             }
         }
     }

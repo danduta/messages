@@ -19,8 +19,12 @@ BINARY=$(PROJECT)
 
 all: $(SOURCES) $(SOURCES-CPP) $(BINARY)
 
-$(BINARY): $(OBJECTS) $(OBJECTS-CPP)
+$(BINARY): $(OBJECTS) $(OBJECTS-CPP) subscriber
 	$(CXX) $(LIBFLAGS) $(OBJECTS-CPP) $(OBJECTS) $(LDFLAGS) -o $@
+	$(CXX) $(LIBFLAGS) $(INCFLAGS) client.cpp -o subscriber
+
+subscriber:
+	$(CXX) $(LIBFLAGS) $(INCFLAGS) client.cpp -o subscriber
 
 .c.o:
 	$(CXX) $(INCFLAGS) $(CFLAGS) -fPIC $< -o $@
@@ -28,12 +32,10 @@ $(BINARY): $(OBJECTS) $(OBJECTS-CPP)
 .cpp.o:
 	$(CXX) $(INCFLAGS) $(CFLAGS) -fPIC $< -o $@
 
-subscriber:
-	$(CXX) $(INCFLAGS) $(CFLAGS) client.cpp -o subscriber
-
 distclean: clean
 	rm -f $(BINARY)
-	rm -f subscriber
 
 clean:
 	rm -f $(OBJECTS)
+	rm -f $(OBJECTS-CPP)
+	rm -f subscriber

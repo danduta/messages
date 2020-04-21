@@ -11,7 +11,7 @@ using namespace std;
 struct client
 {
     int     fd;    
-    char    id[CLIENT_ID_LEN];
+    char    id[CLIENT_ID_LEN + 1];
 };
 
 struct subscription

@@ -13,12 +13,21 @@
 
 #include "client.h"
 
+#include <algorithm>
 #include <vector>
 #include <map>
 
 #define     DEBUG_BUILD true    // change in production haha
 
 #define     MAX_CLIENTS 20      // max connections waiting in queue
+
+struct fd_collection {
+    int tcp_fd;
+    int udp_fd;
+    fd_set all_fds;
+    fd_set tcp_clients;
+    fd_set udp_clients;
+};
 
 #define DIE(assertion, call_description)	\
 	do {									\
@@ -45,6 +54,7 @@ int handle_select(
     int tcp_fd,
     int udp_fd,
     struct sockaddr_in* addr,
-    vector<client> &clients);
+    vector<client> &clients,
+    map<string, vector<subscription>> &subs);
 
 #endif
