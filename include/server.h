@@ -26,7 +26,6 @@ struct fd_collection {
     int udp_fd;
     fd_set all_fds;
     fd_set tcp_clients;
-    fd_set udp_clients;
 
     int fdmax;
 };

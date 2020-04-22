@@ -1,23 +1,51 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-#define     UDP_CONN    1
 #define     TCP_CONN    2
-#define     STDIN_COMM  3
 #define     TCP_SUB     4
 #define     TCP_UNSUB   5
 #define     TCP_EXIT    6
 
-#define     TCP_LEN     256
+#define     PAYLOAD_LEN 1500
+#define     TOPIC_LEN   50
+
+#define     INT         0
+#define     SHORT_REAL  1
+#define     FLOAT       2
+#define     STRING      3
+
+#define     SZ_INT      5
+#define     SZ_SR       2
+#define     SZ_FLOAT    6
+
+#define     POS         0
+#define     NEG         1
 
 struct tcp_message
 {
-    int     type;                       // as defined above
+    int     type;
     bool    sf;
     char    cli_id[CLIENT_ID_LEN + 1];
-    char    payload[TCP_LEN];           // topic, most likely
+    char    payload[TOPIC_LEN];
 };
 
-#define     MSG_SIZE    sizeof(struct tcp_message)
+struct udp_message
+{
+    char    topic[TOPIC_LEN];
+    uint8_t type;
+    char    payload[PAYLOAD_LEN];
+};
+
+struct message
+{
+    sockaddr_in addr;
+    udp_message udp_msg;
+};
+
+#define     MIN_UDP_SIZE    53
+#define     MIN_FWD_SIZE    (sizeof(struct sockaddr_in) + TOPIC_LEN + 1)
+#define     TCP_MSG_SIZE    sizeof(struct tcp_message)
+#define     UDP_MSG_SIZE    sizeof(struct udp_message)
+#define     MSG_SIZE        sizeof(struct message)
 
 #endif

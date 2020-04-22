@@ -23,7 +23,7 @@ $(BINARY): $(OBJECTS) $(OBJECTS-CPP) subscriber
 	$(CXX) $(LIBFLAGS) $(OBJECTS-CPP) $(OBJECTS) $(LDFLAGS) -o $@
 	$(CXX) $(LIBFLAGS) $(INCFLAGS) client.cpp -o subscriber
 
-subscriber:
+subscriber:	$(OBJECTS) $(OBJECTS-CPP)
 	$(CXX) $(LIBFLAGS) $(INCFLAGS) client.cpp -o subscriber
 
 .c.o:

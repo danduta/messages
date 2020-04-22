@@ -15,8 +15,9 @@ int main(int argc, char** args)
     int serv_fd;
     int ret;
     char* id = args[1];
-    struct sockaddr_in serv_addr;
-    struct tcp_message m;
+    sockaddr_in serv_addr;
+    tcp_message m;
+    message rcv_msg;
 
     serv_fd = socket(PF_INET, SOCK_STREAM, 0);
 	DIE(serv_fd < 0, "socket");
@@ -36,10 +37,8 @@ int main(int argc, char** args)
     m.type = TCP_CONN;
     strncpy(m.cli_id, id, CLIENT_ID_LEN);
 
-    ret = send(serv_fd, &m, MSG_SIZE, 0);
-    DIE(ret != MSG_SIZE, "send");
-    cout << "Sizeof msg: " << MSG_SIZE << endl;
-    cout << "Sent " << ret << " bytes" << endl;
+    ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
+    DIE(ret != TCP_MSG_SIZE, "send");
 
     fd_set fds;
     fd_set tmp;
@@ -60,8 +59,8 @@ int main(int argc, char** args)
         for (int i = 0; i <= fdmax; i++) {
             if (FD_ISSET(i, &tmp)) {
                 if (i == STDIN_FILENO) {
-                    char buffer[TCP_LEN];
-                    fgets(buffer, TCP_LEN, stdin);
+                    char buffer[2 * TOPIC_LEN];
+                    fgets(buffer, 2 * TOPIC_LEN, stdin);
                     char* newline = strchr(buffer, '\n');
 
                     if (newline) {
@@ -88,11 +87,13 @@ int main(int argc, char** args)
                     strncpy(m.cli_id, id, CLIENT_ID_LEN);
                     m.sf = false;
                     //TODO: fix getting sf from input buffer
-                    ret = send(serv_fd, &m, MSG_SIZE, 0);
-                    DIE(ret != MSG_SIZE, "send");
+                    ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
+                    DIE(ret != TCP_MSG_SIZE, "send");
 
                     DEBUG("Sent message:");
                     DEBUG(m.payload);
+                } else if (i == serv_fd) {
+                    //TODO: handle receiving forwarded packets from server
                 }
             }
         }
