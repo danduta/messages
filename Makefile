@@ -1,6 +1,8 @@
 PROJECT=server
 SOURCES=
-SOURCES-CPP=server.cpp
+SOURCES-CPP=server.cpp message.cpp
+SUBSCRIBER-CPP=client.cpp
+SUBSCRIBER=subscriber
 LIBRARY=nope
 INCPATHS=include
 LIBPATHS=.
@@ -19,12 +21,12 @@ BINARY=$(PROJECT)
 
 all: $(SOURCES) $(SOURCES-CPP) $(BINARY)
 
-$(BINARY): $(OBJECTS) $(OBJECTS-CPP) subscriber
+$(BINARY): $(OBJECTS) $(OBJECTS-CPP) $(SUBSCRIBER)
 	$(CXX) $(LIBFLAGS) $(OBJECTS-CPP) $(OBJECTS) $(LDFLAGS) -o $@
-	$(CXX) $(LIBFLAGS) $(INCFLAGS) client.cpp -o subscriber
 
-subscriber:	$(OBJECTS) $(OBJECTS-CPP)
-	$(CXX) $(LIBFLAGS) $(INCFLAGS) client.cpp -o subscriber
+$(SUBSCRIBER): $(SOURCES-CPP) $(OBJECTS-CPP) $(SUBSCRIBER-CPP)
+	$(CXX) $(LIBFLAGS) $(INCFLAGS) message.o $(LDFLAGS) $(SUBSCRIBER-CPP) -o $(SUBSCRIBER)
+
 
 .c.o:
 	$(CXX) $(INCFLAGS) $(CFLAGS) -fPIC $< -o $@
@@ -39,3 +41,9 @@ clean:
 	rm -f $(OBJECTS)
 	rm -f $(OBJECTS-CPP)
 	rm -f subscriber
+
+run-server: all
+	./server 12345
+
+run-client: all
+	./subscriber 238 127.0.0.1 12345

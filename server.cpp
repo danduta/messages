@@ -154,7 +154,13 @@ int handle_select(
                 if (it != subs.end()) {
                     for (auto sub : it->second) {
                         DEBUG("Found subscriber with ID:" + string(sub.client->id));
-                        //TODO: forward message
+                        //TODO: enable storing
+                        bytes = send(sub.client->fd, msg, MSG_SIZE, 0);
+                        if (bytes < 0) {
+                            continue;
+                        }
+
+                        DEBUG("Sent " + to_string(bytes) + " bytes to " + string(sub.client->id));
                     }
                 }
             } else {
