@@ -274,8 +274,7 @@ void handle_select(
                     FD_CLR(client->fd, &fds.tcp_clients);
                     close(client->fd);
 
-                    cout << "Client (" << client->id <<
-                        ") disconnected." << endl;
+                    cout << "Client (" << client->id << ") disconnected." << endl;
                 }
             }
         }

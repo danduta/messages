@@ -51,14 +51,6 @@ int main(int argc, char** args)
 
     int fdmax = serv_fd;
 
-    // testing the operator overload
-    inet_aton("1.2.3.4", &rcv_msg.addr.sin_addr);
-    rcv_msg.addr.sin_port = htons(12345);
-    rcv_msg.udp_msg.type = STRING;
-    strcpy(rcv_msg.udp_msg.topic, "topic_test");
-    strcpy(rcv_msg.udp_msg.payload, "test de string lalalalalla");
-    cout << rcv_msg << endl;
-
     while (1) {
         tmp = fds;
 
@@ -109,7 +101,6 @@ int main(int argc, char** args)
                     do {
                         ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
                     } while (ret != TCP_MSG_SIZE);
-                    // DIE(ret != TCP_MSG_SIZE, "send");
 
                     DEBUG("Sent message: " + string(m.payload));
 
