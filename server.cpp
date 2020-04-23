@@ -19,8 +19,9 @@ int main(int argc, char** args)
     fd_set tmp;
     int ret;
     vector<client> clients;
-    //TODO: use multimap???
     map<string, vector<subscription>> subs;
+    map<string, vector<message>> sf_msgs;
+
     
     fds.udp_fd = socket(PF_INET, SOCK_DGRAM, 0);
     DIE(fds.udp_fd < 0, "socket");
@@ -54,47 +55,46 @@ int main(int argc, char** args)
 
     while (1) {
         tmp = fds.all_fds;
-        int newfd = -1;
 
         ret = select(fds.fdmax + 1, &tmp, NULL, NULL, NULL);
 		DIE(ret < 0, "select");
 
-        ret = handle_select(&tmp, &newfd, fds, &addr, clients, subs);
+        ret = handle_select(fds, &tmp, &addr, clients, subs, sf_msgs);
     }
 
     return 0;
 }
 
 int handle_select(
-    fd_set* tmp,
-    int* newfd,
     fd_collection &fds,
+    fd_set* selected,
     sockaddr_in* addr,
     vector<client> &clients,
-    map<string, vector<subscription>> &subs)
+    map<string, vector<subscription>> &subs,
+    map<string, vector<message>> &msgs)
 {
+    int newfd;
+
     char buffer[MSG_SIZE];
     memset(buffer, 0, MSG_SIZE);
 
     for (int i = 0; i <= fds.fdmax; i++) {
-        if (FD_ISSET(i, tmp)) {
+        if (FD_ISSET(i, selected)) {
             if (i == fds.tcp_fd) {
                 socklen_t len = sizeof(sockaddr_in);
-                *newfd = accept(i, (sockaddr*)addr, &len);
-                DIE(*newfd < 0, "accept");
+                newfd = accept(i, (sockaddr*)addr, &len);
+                DIE(newfd < 0, "accept");
 
-                FD_SET(*newfd, &fds.all_fds);
-                FD_SET(*newfd, &fds.tcp_clients);
+                FD_SET(newfd, &fds.all_fds);
+                FD_SET(newfd, &fds.tcp_clients);
 
-                if (*newfd > fds.fdmax) {
-                    fds.fdmax = *newfd;
+                if (newfd > fds.fdmax) {
+                    fds.fdmax = newfd;
                 }
 
                 memset(buffer, 0, TCP_MSG_SIZE);
                 
-                int bytes;
-                bytes = recv(*newfd, buffer, MSG_SIZE, 0);
-
+                ssize_t bytes = recv(newfd, buffer, MSG_SIZE, 0);
                 tcp_message* msg = (tcp_message*)buffer;
 
                 if (bytes != TCP_MSG_SIZE || msg->type != TCP_CONN) {
@@ -105,9 +105,38 @@ int handle_select(
                     continue;
                 }
 
+                auto it = find_if(clients.begin(), clients.end(),
+                    [msg] (const client &c) -> bool {
+                        return strcmp(msg->cli_id, c.id) == 0;});
+
+                if (it != clients.end() && it->status == INACTIVE) {
+                    it->fd = newfd;
+                    it->status = ACTIVE;
+
+                    cout << "Client (" << it->id << ") from " <<
+                        inet_ntoa(addr->sin_addr) << ":" <<
+                        ntohs(addr->sin_port) << " reconnected." << endl;
+
+                    auto old_msg_list = msgs.find(it->id);
+
+                    if (old_msg_list == msgs.end()) {
+                        continue;
+                    }
+
+                    for (auto old_msg : old_msg_list->second) {
+                        DEBUG("Sending old messages...");
+                        send(newfd, &old_msg, MSG_SIZE, 0);
+                    }
+
+                    continue;
+                } else if (it != clients.end() && it->status == ACTIVE) {
+                    continue;
+                }
+
                 client c;
 
-                c.fd = *newfd;
+                c.fd = newfd;
+                c.status = ACTIVE;
                 strncpy(c.id, msg->cli_id, CLIENT_ID_LEN);
 
                 cout << "New client (" << c.id << ") from " <<
@@ -115,19 +144,14 @@ int handle_select(
 
                 clients.emplace_back(c);
             } else if (i == fds.udp_fd) {
-                DEBUG("\nUDP message");
-
                 socklen_t len = sizeof(sockaddr_in);
                 message* msg = (message*)buffer;
                 udp_message* udp_msg = &msg->udp_msg;
 
                 ssize_t bytes;
                 bytes = recvfrom(i, udp_msg, UDP_MSG_SIZE, 0, (sockaddr*)&(msg->addr), &len);
-                DIE(bytes < 0, "recvfrom");
 
-                DEBUG("\ttopic: " + string(udp_msg->topic));
-
-                if (bytes < MIN_UDP_SIZE) {
+                if (bytes < MIN_UDP_SIZE || bytes < 0) {
                     DEBUG("Incomplete UDP packet.");
                     continue;
                 }
@@ -154,7 +178,21 @@ int handle_select(
                 if (it != subs.end()) {
                     for (auto sub : it->second) {
                         DEBUG("Found subscriber with ID:" + string(sub.client->id));
-                        //TODO: enable storing
+                        if (sub.client->status == INACTIVE &&
+                            sub.sf == true) {
+                            
+                            auto cli_msg_list = msgs.find(sub.client->id);
+
+                            if (cli_msg_list != msgs.end()) {
+                                cli_msg_list->second.emplace_back(*msg);
+                            } else {
+                                vector<message> v;
+                                v.emplace_back(*msg);
+                                msgs.insert(pair<string, vector<message>>
+                                    (sub.client->id, v));
+                            }
+                        }
+
                         bytes = send(sub.client->fd, msg, MSG_SIZE, 0);
                         if (bytes < 0) {
                             continue;
@@ -167,9 +205,11 @@ int handle_select(
                 // sub/unsub/exit message from tcp client
                 memset(buffer, 0, TCP_MSG_SIZE);
 
-                int bytes;
-                bytes = recv(i, buffer, TCP_MSG_SIZE, 0);
-                DIE(bytes != TCP_MSG_SIZE, "recv");
+                ssize_t bytes = recv(i, buffer, TCP_MSG_SIZE, 0);
+                
+                if (bytes != TCP_MSG_SIZE) {
+                    continue;
+                }
 
                 tcp_message* msg = (tcp_message*)buffer;
 
@@ -217,7 +257,13 @@ int handle_select(
                         }
                     }
                 } else if (msg->type == TCP_EXIT) {
-                    //TODO: handle this case
+                    client->status = INACTIVE;
+                    FD_CLR(client->fd, &fds.all_fds);
+                    FD_CLR(client->fd, &fds.tcp_clients);
+                    close(client->fd);
+
+                    cout << "Client (" << client->id <<
+                        ") disconnected." << endl;
                 }
             }
         }

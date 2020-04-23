@@ -7,10 +7,13 @@ using namespace std;
 #include <string>
 
 #define		CLIENT_ID_LEN   10
+#define     ACTIVE          true
+#define     INACTIVE        false
 
 struct client
 {
-    int     fd;    
+    int     fd;
+    bool    status;
     char    id[CLIENT_ID_LEN + 1];
 };
 

@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 
 #include "client.h"
+#include "message.h"
 
 #include <algorithm>
 #include <vector>
@@ -43,16 +44,17 @@ struct fd_collection {
 #define DEBUG(msg)                          \
     do {                                    \
         if(DEBUG_BUILD) {                   \
+            std::cout << "[DEBUG] ";        \
             std::cout << msg << std::endl;  \
         }                                   \
     } while (0);                            \
 
 int handle_select(
-    fd_set* tmp,
-    int* newfd,
     fd_collection &fds,
+    fd_set* selected,
     struct sockaddr_in* addr,
     vector<client> &clients,
-    map<string, vector<subscription>> &subs);
+    map<string, vector<subscription>> &subs,
+    map<string, vector<message>> &messages);
 
 #endif

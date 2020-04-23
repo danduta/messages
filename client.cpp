@@ -37,8 +37,9 @@ int main(int argc, char** args)
     m.type = TCP_CONN;
     strncpy(m.cli_id, id, CLIENT_ID_LEN);
 
-    ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
-    DIE(ret != TCP_MSG_SIZE, "send");
+    do {
+        ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
+    } while (ret != TCP_MSG_SIZE);
 
     fd_set fds;
     fd_set tmp;
@@ -75,14 +76,25 @@ int main(int argc, char** args)
                         *newline = '\0';
                     }
 
-                    DEBUG("\nRead from stdin:");
-                    DEBUG(buffer);
+                    m.sf = false;
 
                     if (strncmp(buffer, "exit", 4) == 0) {
                         m.type = TCP_EXIT;
                     } else if (strncmp(buffer, "subscribe", 9) == 0) {
                         DEBUG("Subscribing...");
+
+                        if (buffer[strlen(buffer) - 1] == '1') {
+                            m.sf = true;
+                        }
+
                         strcpy(m.payload, strchr(buffer, ' ') + 1);
+
+                        char* space = strchr(m.payload, ' ');
+
+                        if (space) {
+                            *space = '\0';
+                        }
+
                         m.type = TCP_SUB;
                     } else if (strncmp(buffer, "unsubscribe", 11) == 0) {
                         DEBUG("Unsubscribing...");
@@ -93,15 +105,20 @@ int main(int argc, char** args)
                     }
 
                     strncpy(m.cli_id, id, CLIENT_ID_LEN);
-                    m.sf = false;
-                    //TODO: fix getting sf from input buffer
-                    ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
-                    DIE(ret != TCP_MSG_SIZE, "send");
 
-                    DEBUG("Sent message:");
-                    DEBUG(m.payload);
+                    do {
+                        ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
+                    } while (ret != TCP_MSG_SIZE);
+                    // DIE(ret != TCP_MSG_SIZE, "send");
+
+                    DEBUG("Sent message: " + string(m.payload));
+
+                    if (m.type == TCP_EXIT) {
+                        DEBUG("Closing client...");
+                        close(serv_fd);
+                        return 0;
+                    }
                 } else if (i == serv_fd) {
-                    //TODO: handle receiving forwarded packets from server
                     ssize_t bytes = recv(serv_fd, &rcv_msg, MSG_SIZE, 0);
                     
                     if (bytes < MIN_FWD_SIZE) {
