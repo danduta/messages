@@ -23,12 +23,12 @@
 #define     MAX_CLIENTS 20      // max connections waiting in queue
 
 struct fd_collection {
-    int tcp_fd;
-    int udp_fd;
-    fd_set all_fds;
-    fd_set tcp_clients;
+    int     tcp_fd;
+    int     udp_fd;
+    fd_set  all_fds;
+    fd_set  tcp_clients;
 
-    int fdmax;
+    int     fdmax;
 };
 
 #define DIE(assertion, call_description)	\
@@ -49,7 +49,7 @@ struct fd_collection {
         }                                   \
     } while (0);                            \
 
-int handle_select(
+void handle_select(
     fd_collection &fds,
     fd_set* selected,
     struct sockaddr_in* addr,

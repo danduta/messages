@@ -4,15 +4,27 @@
 
 using namespace std;
 
-int main(int argc, char** args)
+int usage(int argc, char** args)
 {
     if (argc < 2 || argc > 2) {
         cout << "Usage:\t./server <PORT>" << endl;
-        return -1;
+        return 1;
     } else {
-        DEBUG("Started server on port ");
-        DEBUG(atoi(args[1]));
+        if (DEBUG_BUILD) {
+            cout << "Warning: This binary is built in debug/verbose mode." << endl;
+            cout << "To change this and avoid verbose messages change the value of" << endl;
+            cout << "DEBUG_MODE in include/server.h to false\n" << endl;
+        }
+        DEBUG("Started server on port " + to_string(atoi(args[1])));
     }
+
+    return 0;
+}
+
+int main(int argc, char** args)
+{
+    if (usage(argc, args))
+        return -1;
 
     int port;
     fd_collection fds;
@@ -59,13 +71,13 @@ int main(int argc, char** args)
         ret = select(fds.fdmax + 1, &tmp, NULL, NULL, NULL);
 		DIE(ret < 0, "select");
 
-        ret = handle_select(fds, &tmp, &addr, clients, subs, sf_msgs);
+        handle_select(fds, &tmp, &addr, clients, subs, sf_msgs);
     }
 
     return 0;
 }
 
-int handle_select(
+void handle_select(
     fd_collection &fds,
     fd_set* selected,
     sockaddr_in* addr,
@@ -74,7 +86,8 @@ int handle_select(
     map<string, vector<message>> &msgs)
 {
     int newfd;
-
+    //TODO: pass buffer as parameter to function to avoid
+    // allocating 1500 bytes on the stack on every call
     char buffer[MSG_SIZE];
     memset(buffer, 0, MSG_SIZE);
 
@@ -99,8 +112,7 @@ int handle_select(
 
                 if (bytes != TCP_MSG_SIZE || msg->type != TCP_CONN) {
                     //TODO: create function that handles recv() calls
-                    //client can send a large number of messages
-                    //and they can get squished together
+                    // multiple clients may connect at once
                     DEBUG("Invalid message from TCP client");
                     continue;
                 }
@@ -180,7 +192,7 @@ int handle_select(
                         DEBUG("Found subscriber with ID:" + string(sub.client->id));
                         if (sub.client->status == INACTIVE &&
                             sub.sf == true) {
-                            
+                            DEBUG("\ttoring message to forward later..");
                             auto cli_msg_list = msgs.find(sub.client->id);
 
                             if (cli_msg_list != msgs.end()) {
@@ -268,6 +280,4 @@ int handle_select(
             }
         }
     }
-
-    return 0;
 }

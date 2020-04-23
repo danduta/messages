@@ -52,13 +52,10 @@ std::string payload_to_string(message& m)
         uint32_t abs;
         uint8_t negative_power;
         
-        // negative_power = *(uint8_t*)(payload + 5);
         abs = *(uint32_t*)(payload + sizeof(uint8_t));
         negative_power = *(uint8_t*)(payload + sizeof(uint8_t) + sizeof(uint32_t));
         number = (abs / (pow(10, negative_power)));
 
-        // std::cout << "abs: " << abs << " power: " << negative_power << std::endl;
-        
         return sign + std::to_string(number);
         break;
     case STRING:

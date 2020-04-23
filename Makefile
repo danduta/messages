@@ -15,7 +15,6 @@ OBJECTS=$(SOURCES:.c=.o)
 OBJECTS-CPP=$(SOURCES-CPP:.cpp=.o)
 INCFLAGS=$(foreach TMP,$(INCPATHS),-I$(TMP))
 LIBFLAGS=$(foreach TMP,$(LIBPATHS),-L$(TMP))
-
 # Set up the output file names for the different output types
 BINARY=$(PROJECT)
 
@@ -26,7 +25,6 @@ $(BINARY): $(OBJECTS) $(OBJECTS-CPP) $(SUBSCRIBER)
 
 $(SUBSCRIBER): $(SOURCES-CPP) $(OBJECTS-CPP) $(SUBSCRIBER-CPP)
 	$(CXX) $(LIBFLAGS) $(INCFLAGS) message.o $(LDFLAGS) $(SUBSCRIBER-CPP) -o $(SUBSCRIBER)
-
 
 .c.o:
 	$(CXX) $(INCFLAGS) $(CFLAGS) -fPIC $< -o $@

@@ -10,16 +10,14 @@ using namespace std;
 #define     ACTIVE          true
 #define     INACTIVE        false
 
-struct client
-{
+struct client {
     int     fd;
     bool    status;
     char    id[CLIENT_ID_LEN + 1];
 };
 
-struct subscription
-{
-    struct client*	client;
+struct subscription {
+    struct client*  client;
     bool            sf;
 };
 
