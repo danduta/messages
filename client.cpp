@@ -87,7 +87,7 @@ int main(int argc, char** args)
     char buffer[3 * MSG_SIZE];
 
     serv_fd = socket(PF_INET, SOCK_STREAM, 0);
-	DIE(serv_fd < 0, "socket");
+    DIE(serv_fd < 0, "socket");
 
     int yes = 1;
     ret = setsockopt(serv_fd, IPPROTO_TCP, TCP_NODELAY,
@@ -98,13 +98,13 @@ int main(int argc, char** args)
     DIE (port < 0, "atoi");
 
     memset(&serv_addr, 0, sizeof(struct sockaddr_in));
-	serv_addr.sin_family = PF_INET;
-	serv_addr.sin_port = htons(port);
-	ret = inet_aton(args[2], &serv_addr.sin_addr);
-	DIE(ret == 0, "inet_aton");
+    serv_addr.sin_family = PF_INET;
+    serv_addr.sin_port = htons(port);
+    ret = inet_aton(args[2], &serv_addr.sin_addr);
+    DIE(ret == 0, "inet_aton");
 
-	ret = connect(serv_fd, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
-	DIE(ret < 0, "connect");
+    ret = connect(serv_fd, (struct sockaddr*) &serv_addr, sizeof(serv_addr));
+    DIE(ret < 0, "connect");
 
     m.type = TCP_CONN;
     strncpy(m.cli_id, id, CLIENT_ID_LEN);
@@ -127,7 +127,7 @@ int main(int argc, char** args)
         tmp = fds;
 
         ret = select(fdmax + 1, &tmp, NULL, NULL, NULL);
-		DIE(ret < 0, "select");
+        DIE(ret < 0, "select");
 
         for (int i = 0; i <= fdmax; i++) {
             if (FD_ISSET(i, &tmp)) {

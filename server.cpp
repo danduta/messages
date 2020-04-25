@@ -83,7 +83,7 @@ int main(int argc, char** args)
         tmp = fds.all_fds;
 
         ret = select(fds.fdmax + 1, &tmp, NULL, NULL, NULL);
-		DIE(ret < 0, "select");
+        DIE(ret < 0, "select");
 
         ret = handle_select(fds, &tmp, &addr, clients, subs, sf_msgs);
         if (ret < 0) {
