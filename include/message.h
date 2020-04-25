@@ -57,5 +57,6 @@ struct message
 #define     MSG_SIZE        sizeof(struct message) - 1
 
 std::ostream& operator<<(std::ostream& os, message& m);
+int get_pkt_size(udp_message* udp_msg);
 
 #endif

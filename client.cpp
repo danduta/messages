@@ -82,7 +82,9 @@ int main(int argc, char** args)
     char* id = args[1];
     sockaddr_in serv_addr;
     tcp_message m;
-    message rcv_msg;
+    message* rcv_msg;
+
+    char buffer[3 * MSG_SIZE];
 
     serv_fd = socket(PF_INET, SOCK_STREAM, 0);
 	DIE(serv_fd < 0, "socket");
@@ -134,8 +136,7 @@ int main(int argc, char** args)
                     fgets(buffer, 2 * TOPIC_LEN, stdin);
 
                     if (!is_input_valid(buffer)) {
-                        DEBUG("Invalid input!");
-                        DEBUG_END();
+                        DEBUG("Invalid input!" << endl);
                         continue;
                     }
 
@@ -144,8 +145,7 @@ int main(int argc, char** args)
                     if (strncmp(buffer, "exit", 4) == 0) {
                         m.type = TCP_EXIT;
                     } else if (strncmp(buffer, "subscribe", 9) == 0) {
-                        DEBUG("Subscribing...");
-                        DEBUG_END();
+                        DEBUG("Subscribing..." << endl);
 
                         if (buffer[strlen(buffer) - 1] == '1') {
                             m.sf = true;
@@ -161,8 +161,7 @@ int main(int argc, char** args)
 
                         m.type = TCP_SUB;
                     } else if (strncmp(buffer, "unsubscribe", 11) == 0) {
-                        DEBUG("Unsubscribing...");
-                        DEBUG_END();
+                        DEBUG("Unsubscribing..." << endl);
                         strcpy(m.payload, strchr(buffer, ' ') + 1);
                         m.type = TCP_UNSUB;
                     } else {
@@ -185,35 +184,47 @@ int main(int argc, char** args)
                         }
                         cout << endl;
 
-                        DEBUG("Sent message: " + string(m.payload));
-                        DEBUG_END();
+                        DEBUG("Sent message: " << m.payload << endl);
                     }
 
                     if (m.type == TCP_EXIT) {
-                        DEBUG("Closing client...");
-                        DEBUG_END();
+                        DEBUG("Closing client..." << endl);
 
                         close(serv_fd);
                         return 0;
                     }
                 } else if (i == serv_fd) {
-                    ssize_t bytes = recv(serv_fd, &rcv_msg, MSG_SIZE, 0);
+                    ssize_t bytes = recv(serv_fd, buffer, MSG_SIZE, 0);
+                    rcv_msg = (message*)buffer;
 
                     if (bytes == 0) {
-                        DEBUG("Server is closing the connection. Closing sockets");
-                        DEBUG_END();
+                        DEBUG("Server is closing the connection." << endl);
+                        DEBUG("Closing sockets" << endl);
 
                         close(serv_fd);
                         return 0;
                     } else if (bytes < 0 || bytes < MIN_FWD_SIZE) {
                         continue;
                     }
-                    /*
-                     * TODO(danduta): TCP buffer can contain multiple
-                     * glued messages?
-                     */
 
-                    cout << rcv_msg << endl;
+                    /*
+                     * TCP messages may get glued together so a function
+                     * that calculates the packet size is useful to know
+                     * where to move the received message pointer.
+                     */
+                    DEBUG("Received " << bytes << " bytes." << endl);
+                    char* p = buffer;
+
+                    do {
+                        cout << *rcv_msg << endl;
+
+                        int pkt_size = get_pkt_size(&rcv_msg->udp_msg);
+
+                        bytes -= pkt_size;
+
+                        p = p + pkt_size;
+                        rcv_msg = (message*)p;
+                    } while(bytes > 0);
                 }
             }
         }

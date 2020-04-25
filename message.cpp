@@ -37,17 +37,17 @@ std::string payload_to_string(message& m)
     switch (m.udp_msg.type)
     {
     case INT:
-        return sign + std::to_string(*(uint32_t*)(payload + 1));
+        return sign + std::to_string(ntohl(*(uint32_t*)(payload + 1)));
     case SHORT_REAL:
         double result;
-        result = ((*(uint16_t*)(payload)) / (double)100);
+        result = (htons(*(uint16_t*)(payload))) / (double)100;
         return std::to_string(result);
     case FLOAT:
         double number;
         uint32_t abs;
         uint8_t negative_power;
         
-        abs = *(uint32_t*)(payload + sizeof(uint8_t));
+        abs = ntohl(*(uint32_t*)(payload + sizeof(uint8_t)));
         negative_power = *(uint8_t*)(payload + sizeof(uint8_t) + sizeof(uint32_t));
         number = (abs / (pow(10, negative_power)));
 
@@ -73,4 +73,23 @@ std::ostream& operator<<(std::ostream& os, message& m)
         " - " << payload_to_string(m);
 
     return os;
+}
+
+int get_pkt_size(udp_message* udp_msg)
+{
+    int fwd_size = MIN_FWD_SIZE;
+    if (udp_msg->type == INT) {
+        fwd_size += SZ_INT;
+    } else if (udp_msg->type == SHORT_REAL) {
+        fwd_size += SZ_SR;
+    } else if (udp_msg->type == FLOAT) {
+        fwd_size += SZ_FLOAT;
+    } else if (udp_msg->type == STRING) {
+        fwd_size +=
+            min(PAYLOAD_LEN, (int)strlen(udp_msg->payload));
+    } else {
+        return -1;
+    }
+
+    return fwd_size;
 }

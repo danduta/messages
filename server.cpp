@@ -21,8 +21,7 @@ int server_usage(int argc, char** args)
             cout << "the value of" << endl;
             cout << "DEBUG_MODE in include/server.h to false\n" << endl;
         }
-        DEBUG("Started server on port " + to_string(atoi(args[1])));
-        DEBUG_END();
+        DEBUG("Started server on port " << atoi(args[1]) << endl);
     }
 
     return 0;
@@ -78,8 +77,7 @@ int main(int argc, char** args)
     FD_SET(fds.udp_fd, &fds.all_fds);
     FD_SET(STDIN_FILENO, &fds.all_fds);
 
-    DEBUG("Waiting for messages...");
-    DEBUG_END();
+    DEBUG("Waiting for messages..." << endl);
 
     while (1) {
         tmp = fds.all_fds;
@@ -89,8 +87,7 @@ int main(int argc, char** args)
 
         ret = handle_select(fds, &tmp, &addr, clients, subs, sf_msgs);
         if (ret < 0) {
-            DEBUG("Closing server.");
-            DEBUG_END();
+            DEBUG("Closing server." << endl);
             return 0;
         }
     }
@@ -113,7 +110,7 @@ vector<subscription>::iterator is_sub (
 
     if (it != list.end() && it->sf != sf) {
         DEBUG("Updating SF flag of " + string(id) + " to " << boolalpha << sf);
-        DEBUG_END();
+        DEBUG(endl);
         it->sf = sf;
     }
 
@@ -175,8 +172,7 @@ int handle_select(
                 tcp_message* msg = (tcp_message*)buffer;
 
                 if (bytes != TCP_MSG_SIZE || msg->type != TCP_CONN) {
-                    DEBUG("Invalid message from TCP client");
-                    DEBUG_END();
+                    DEBUG("Invalid message from TCP client" << endl);
                     continue;
                 }
                 // Look for the client in the client vector
@@ -204,10 +200,17 @@ int handle_select(
                     if (old_msg_list == msgs.end())
                         continue;
 
-                    for (auto old_msg : old_msg_list->second) {
-                        DEBUG("Sending old messages...");
-                        DEBUG_END();
-                        send(newfd, &old_msg, MSG_SIZE, 0);
+                    while (!old_msg_list->second.empty()) {
+                        auto old_msg = old_msg_list->second.back();
+                        DEBUG("Sending old messages to " << it->id << endl);
+
+                        int fwd_size = get_pkt_size(&old_msg.udp_msg);
+                        if (fwd_size < 0)
+                            continue;
+
+                        send(newfd, &old_msg, fwd_size, 0);
+
+                        old_msg_list->second.pop_back();
                     }
 
                     continue;
@@ -236,24 +239,13 @@ int handle_select(
                                 (sockaddr*)&(msg->addr), &len);
 
                 if (bytes < MIN_UDP_SIZE || bytes < 0) {
-                    DEBUG("Incomplete UDP packet.");
-                    DEBUG_END();
+                    DEBUG("Incomplete UDP packet." << endl);
                     continue;
                 }
 
-                int fwd_size = MIN_FWD_SIZE;
-                if (udp_msg->type == INT) {
-                    fwd_size += SZ_INT;
-                } else if (udp_msg->type == SHORT_REAL) {
-                    fwd_size += SZ_SR;
-                } else if (udp_msg->type == FLOAT) {
-                    fwd_size += SZ_FLOAT;
-                } else if (udp_msg->type == STRING) {
-                    fwd_size +=
-                        min(PAYLOAD_LEN, (int)strlen(udp_msg->payload));
-                } else {
+                int fwd_size = get_pkt_size(udp_msg);
+                if (fwd_size < 0)
                     continue;
-                }
 
                 char topic[TOPIC_LEN + 1];
                 strcpy(topic, udp_msg->topic);
@@ -267,17 +259,14 @@ int handle_select(
                 if (it != subs.end()) {
                     // Iterate through the subscribers
                     for (auto sub : it->second) {
-                        DEBUG("Found subscriber with ID:")
-                        DEBUG(string(sub.client->id));
-                        DEBUG_END();
+                        DEBUG("Found subscriber with ID: " << sub.client->id << endl);
                         /*
                          * Store message for later forward if the client is 
                          * INACTIVE.
                          */
                         if (sub.client->status == INACTIVE &&
                             sub.sf == true) {
-                            DEBUG("\tstoring message to forward later..");
-                            DEBUG_END();
+                            DEBUG("\tstoring message to forward later.." << endl);
                             auto cli_msg_list = msgs.find(sub.client->id);
 
                             // Insert a new vector if no subscribers yet
@@ -292,14 +281,13 @@ int handle_select(
                             continue;
                         }
 
-                        bytes = send(sub.client->fd, msg, MSG_SIZE, 0);
+                        bytes = send(sub.client->fd, msg, fwd_size, 0);
                         if (bytes < 0) {
                             continue;
                         }
 
-                        DEBUG("Sent " + to_string(bytes))
-                        DEBUG(" bytes to " + string(sub.client->id));
-                        DEBUG_END();
+                        DEBUG("Sent " << bytes << " bytes to ");
+                        DEBUG(sub.client->id << endl);
                     }
                 }
             } else {
@@ -324,15 +312,13 @@ int handle_select(
                     continue;
 
                 if (msg->type == TCP_SUB) {
-                    DEBUG(string(msg->cli_id) + " is subbing to " + string(msg->payload))
-                    DEBUG_END();
+                    DEBUG(msg->cli_id << " is subbing to " << msg->payload << endl);
                     auto it = subs.find(msg->payload);
                     // Look for the topic that the client is trying to sub to
                     if (it != subs.end()) {
                         if (is_sub(msg->cli_id, it->second, msg->sf) !=
                             it->second.end()) {
-                            DEBUG("Client is already subbed!");
-                            DEBUG_END();
+                            DEBUG("Client is already subbed!" << endl);
                             continue;
                         }
 
