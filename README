@@ -1,0 +1,55 @@
+321CD, Dan-Stefan Duta
+
+~ Tema 2 PC ~
+
+In rezolvarea temei, am definit mai multe structuri si constante vizibile in
+include/*.h care ma ajuta la interpretarea mesajelor trimise si primite.
+
+Pentru mesaje primite de la clientii UDP am definit udp_message, care contine
+campurile descrise si in cerinta. Aceasta structura este si un camp in
+structura message, folosita pentru a forwarda mesaje primite de la clienti UDP
+clientilor TCP abonati. Practic, pun adresa clientului UDP deasupra mesajului.
+Pentru afisarea mesajelor primite de la server in clientii TCP am facut
+overload operatorului "<<" pentru a afisa mai simplu mesajele primite.
+
+Pentru a realiza comunicarea intre server si clientii TCP, am folosit
+structura tcp_message, care contine campuri ce detaliaza tipului mesajului
+(daca clientul doreste sa se conecteze, aboneze, dezaboneze sau
+sa inchida conexiunea), un camp de sf in cazul in care este mesajaul este o 
+cerere de abonare si un sir de caractere ce contine topicul sau ID-ul clientului
+in cazul in care e o cerere de conectare. Clientul trimite un mesaj cu ID-ul
+cand porneste si server-ul il interpreteaza.
+
+~ Logica clienti-abonati
+
+Pentru a retine toti clientii si toate subscriptions am folosit structurile
+client si subscription. Structura client, definita in client.h, contine
+campuri pentru fd-ul aferent clientului, statusul lui (daca este activ - 
+conectat la server - sau inactiv), precum si id-ul intr-un string. Pentru
+a retine fiecare abonare, retin un pointer catre adresa din vectorul de clienti
+a clientului.
+Am ales sa retin clientii, fie ca sunt curent
+conectati la server sau nu, intr-un vector (as fi putut sa-i retin intr-un
+map folosind ID-ul ca cheie pentru a reduce complexitatea gasirii unui client
+dar mi-a venit ideea prea tarziu) si toate abonamentele intr-un map care are ca
+cheie topic-ul si ca valoare o lista de subscription. Am facut aceasta alegere
+deoarece numarul clientilor este mult mai mic decat numarul subiectelor:
+daca as fi retinut pentru fiecare client subiectele la care e abonat, ar
+fi trebuit sa caut prin toti clientii si sa fac daca sunt abonat la un topic.
+Asta ar fi avut o complexitate best-case de O(nr_clienti), daca retineam
+abonarile intr-un map in fiecare client. Astfel, pentru a forwarda un mesaj
+aferent unui topic, am redus complexitatea la O(nr_clienti_abonati).
+
+~ Logica SF
+
+Pentru a retine mesajele care trebuie trimise unui client TCP in cazul in care
+nu e momentan conectat (c.status == INACTIVE) dar e abonat la un topic,
+cand primesc un mesaj de la un client UDP si e pe cazul asta, copiez mesajul
+intr-un vector (privit ca o coada, oarecum) care este o valoare dintr-un map
+care are ca cheie ID-ul cientului. Mai lesne de inteles, retin intr-un map
+care are chei ID-uri de clienti toate mesajele care trebuie primite de
+client la reconectare.
+
+~ server.cpp
+Functia main nu face nimic interesant, toata magia e preluata de functia handle_select
+(care ar trebui scurtata) care implementeaza logica programului.
