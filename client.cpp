@@ -175,17 +175,19 @@ int main(int argc, char** args)
                         ret = send(serv_fd, &m, TCP_MSG_SIZE, 0);
                     } while (ret != TCP_MSG_SIZE);
 
-                    if (m.type == TCP_UNSUB) {
-                        cout << "un";
-                    }
-                    cout << "subscribed " << m.payload;
-                    if (m.sf == true) {
-                        cout << " with sf";
-                    }
-                    cout << endl;
+                    if (m.type == TCP_SUB || m.type == TCP_UNSUB) {
+                        if (m.type == TCP_UNSUB) {
+                            cout << "un";
+                        }
+                        cout << "subscribed " << m.payload;
+                        if (m.sf == true) {
+                            cout << " with sf";
+                        }
+                        cout << endl;
 
-                    DEBUG("Sent message: " + string(m.payload));
-                    DEBUG_END();
+                        DEBUG("Sent message: " + string(m.payload));
+                        DEBUG_END();
+                    }
 
                     if (m.type == TCP_EXIT) {
                         DEBUG("Closing client...");
