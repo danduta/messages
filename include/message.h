@@ -57,6 +57,5 @@ struct message
 #define     MSG_SIZE        sizeof(struct message) - 1
 
 std::ostream& operator<<(std::ostream& os, message& m);
-std::string payload_to_string(const message& m);
 
 #endif

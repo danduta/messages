@@ -7,7 +7,7 @@ LIBRARY=nope
 INCPATHS=include
 LIBPATHS=.
 LDFLAGS=
-CFLAGS=-c -Wall
+CXXFLAGS=-std=c++11 -c -Wall
 CC=gcc
 CXX=g++
 # Automatic generation of some important lists
@@ -27,10 +27,10 @@ $(SUBSCRIBER): $(SOURCES-CPP) $(OBJECTS-CPP) $(SUBSCRIBER-CPP)
 	$(CXX) $(LIBFLAGS) $(INCFLAGS) message.o $(LDFLAGS) $(SUBSCRIBER-CPP) -o $(SUBSCRIBER)
 
 .c.o:
-	$(CXX) $(INCFLAGS) $(CFLAGS) -fPIC $< -o $@
+	$(CXX) $(INCFLAGS) $(CXXFLAGS) -fPIC $< -o $@
 
 .cpp.o:
-	$(CXX) $(INCFLAGS) $(CFLAGS) -fPIC $< -o $@
+	$(CXX) $(INCFLAGS) $(CXXFLAGS) -fPIC $< -o $@
 
 distclean: clean
 	rm -f $(BINARY)

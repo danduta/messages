@@ -3,6 +3,8 @@
 
 using namespace std;
 
+#include <netinet/tcp.h>
+
 #include <list>
 #include <string>
 
