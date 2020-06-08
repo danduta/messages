@@ -44,5 +44,5 @@ care are chei ID-uri de clienti toate mesajele care trebuie primite de
 client la reconectare.
 
 ~ server.cpp
-Functia main nu face nimic interesant, toata magia e preluata de functia handle_select
+Functia main nu face nimic interesant, toata magia e preluata de functia `handle_select`
 (care ar trebui scurtata) care implementeaza logica programului.
