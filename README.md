@@ -1,19 +1,12 @@
-321CD, Dan-Stefan Duta
-
-~ Tema 2 PC ~
-
-In rezolvarea temei, am definit mai multe structuri si constante vizibile in
-include/*.h care ma ajuta la interpretarea mesajelor trimise si primite.
-
-Pentru mesaje primite de la clientii UDP am definit udp_message, care contine
+Pentru mesaje primite de la clientii UDP am definit `udp_message`, care contine
 campurile descrise si in cerinta. Aceasta structura este si un camp in
 structura message, folosita pentru a forwarda mesaje primite de la clienti UDP
 clientilor TCP abonati. Practic, pun adresa clientului UDP deasupra mesajului.
 Pentru afisarea mesajelor primite de la server in clientii TCP am facut
-overload operatorului "<<" pentru a afisa mai simplu mesajele primite.
+overload operatorului `<<` pentru a afisa mai simplu mesajele primite.
 
 Pentru a realiza comunicarea intre server si clientii TCP, am folosit
-structura tcp_message, care contine campuri ce detaliaza tipului mesajului
+structura `tcp_message`, care contine campuri ce detaliaza tipului mesajului
 (daca clientul doreste sa se conecteze, aboneze, dezaboneze sau
 sa inchida conexiunea), un camp de sf in cazul in care este mesajaul este o 
 cerere de abonare si un sir de caractere ce contine topicul sau ID-ul clientului
@@ -23,7 +16,7 @@ cand porneste si server-ul il interpreteaza.
 ~ Logica clienti-abonati
 
 Pentru a retine toti clientii si toate subscriptions am folosit structurile
-client si subscription. Structura client, definita in client.h, contine
+client si subscription. Structura `client`, definita in `client.h`, contine
 campuri pentru fd-ul aferent clientului, statusul lui (daca este activ - 
 conectat la server - sau inactiv), precum si id-ul intr-un string. Pentru
 a retine fiecare abonare, retin un pointer catre adresa din vectorul de clienti
@@ -43,7 +36,7 @@ aferent unui topic, am redus complexitatea la O(nr_clienti_abonati).
 ~ Logica SF
 
 Pentru a retine mesajele care trebuie trimise unui client TCP in cazul in care
-nu e momentan conectat (c.status == INACTIVE) dar e abonat la un topic,
+nu e momentan conectat (`c.status == INACTIVE`) dar e abonat la un topic,
 cand primesc un mesaj de la un client UDP si e pe cazul asta, copiez mesajul
 intr-un vector (privit ca o coada, oarecum) care este o valoare dintr-un map
 care are ca cheie ID-ul cientului. Mai lesne de inteles, retin intr-un map
